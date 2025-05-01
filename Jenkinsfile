@@ -1,33 +1,28 @@
-
 pipeline {
     agent any
     stages {
         stage('Clone Repo') {
             steps {
-                git branch: 'main', url: 'https://github.com/sjherbert/flask-simple-app.git'
+                git branch: 'herbertmoses-patch-1', url: 'https://github.com/sjherbert/flask-simple-app.git'
             }
         }
-        stage('Install Dependencies') {
+        stage('Build Docker Image') {
             steps {
                 sh '''
-                echo "Setting up Python virtual environment..."
-                python3 -m venv venv
-                echo "Activating virtual environment..."
-                bash -c "source venv/bin/activate && pip install -r requirements.txt"
+                docker build -t flask-app .
                 '''
             }
         }
-        stage('Run Flask App') {
+        stage('Run Flask Container') {
             steps {
                 sh '''
-                echo "Activating virtual environment..."
-                bash -c "source venv/bin/activate && echo Running flask application && nohup python app.py > flask.log 2>&1 &"
+                docker run -d -p 5000:5000 flask-app
                 '''
             }
         }
-        stage('complete') {
+        stage('Complete') {
             steps {
-                echo 'Job complete!'
+                echo 'Deployment successful!'
             }
         }
     }
