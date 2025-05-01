@@ -1,23 +1,31 @@
 pipeline {
     agent any
+    environment {
+        DOCKERHUB_USERNAME = 'mosy778'
+        IMAGE_NAME = 'flask-app'
+    }
     stages {
-        stage('Build Docker Image') {
+        stage('Docker Compose Build') {
             steps {
-                sh '''
-                docker build -t flask-app .
-                '''
+                sh 'docker-compose build'
             }
         }
-        stage('Run Flask Container') {
+        stage('Run Flask App with Compose') {
+            steps {
+                sh 'docker-compose up -d'
+            }
+        }
+        stage('Tag and Push to Docker Hub') {
             steps {
                 sh '''
-                docker run -d -p 5000:5000 flask-app
+                docker tag ${IMAGE_NAME} ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest
+                docker push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest
                 '''
             }
         }
         stage('Complete') {
             steps {
-                echo 'Deployment successful!'
+                echo 'App built, deployed, and pushed to Docker Hub!'
             }
         }
     }
