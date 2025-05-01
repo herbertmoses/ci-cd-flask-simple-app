@@ -3,7 +3,7 @@ pipeline {
     stages {
         stage('Clone Repo') {
             steps {
-                git branch: 'herbertmoses-patch-1', url: 'https://github.com/sjherbert/flask-simple-app.git'
+                git branch: 'herbertmoses-patch-1', url: 'https://github.com/herbertmoses/ci-cd-flask-simple-app.git'
             }
         }
         stage('Build Docker Image') {
