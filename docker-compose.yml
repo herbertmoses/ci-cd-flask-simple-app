@@ -3,6 +3,7 @@ version: '3.8'
 services:
   flask-app:
     build: .
+    image: flask-app   # ← Add this line
     ports:
       - "5000:5000"
     container_name: flask-app
