@@ -5,7 +5,7 @@ pipeline {
         IMAGE_NAME = 'flask-app'
         DOCKER_HUB_REPO = 'mosy778/flask-app'
         DOCKER_HUB_USERNAME = 'mosy778'
-        DOCKER_HUB_PASSWORD = 'Monday!123' // or password if not using token
+        DOCKER_HUB_PASSWORD = 'Monday!123' // Consider using Jenkins credentials
     }
 
     stages {
@@ -21,6 +21,22 @@ pipeline {
                 sh 'git clone -b herbertmoses-patch-1 https://github.com/herbertmoses/ci-cd-flask-simple-app.git'
                 dir('ci-cd-flask-simple-app') {
                     sh 'ls -al'
+                }
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                dir('ci-cd-flask-simple-app') {
+                    sh 'pip install -r requirements.txt'
+                }
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                dir('ci-cd-flask-simple-app') {
+                    sh 'pytest tests/'
                 }
             }
         }
@@ -53,7 +69,7 @@ pipeline {
 
         stage('Complete') {
             steps {
-                echo 'App built, deployed, and pushed to Docker Hub!'
+                echo 'App tested, built, deployed, and pushed to Docker Hub!'
             }
         }
     }
