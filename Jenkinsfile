@@ -5,7 +5,7 @@ pipeline {
         IMAGE_NAME = 'flask-app'
         DOCKER_HUB_REPO = 'mosy778/flask-app'
         DOCKER_HUB_USERNAME = 'mosy778'
-        DOCKER_HUB_PASSWORD = 'Monday!123' // or password if not using token
+        DOCKER_HUB_PASSWORD = 'Monday!123' // Use Jenkins credentials ideally
     }
 
     stages {
@@ -51,9 +51,26 @@ pipeline {
             }
         }
 
+        stage('Deploy with Docker Swarm') {
+            steps {
+                script {
+                    sh 'docker swarm init || true'  // initialize swarm if not already
+                    sh '''
+                    docker service rm flask_service || true
+
+                    docker service create \
+                        --name flask_service \
+                        --publish 5000:5000 \
+                        --replicas 2 \
+                        ${DOCKER_HUB_REPO}:latest
+                    '''
+                }
+            }
+        }
+
         stage('Complete') {
             steps {
-                echo 'App built, deployed, and pushed to Docker Hub!'
+                echo 'App built, pushed to Docker Hub, and deployed with Docker Swarm!'
             }
         }
     }
