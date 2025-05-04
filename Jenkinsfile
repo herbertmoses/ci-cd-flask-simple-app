@@ -41,14 +41,15 @@ pipeline {
 
         stage('Tag and Push to Docker Hub') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
-                    sh "docker tag ${IMAGE_NAME} ${DOCKER_HUB_REPO}:latest"
-                    sh "docker push ${DOCKER_HUB_REPO}:latest"
-                }
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
+            script {
+                sh 'echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin'
+                sh "docker tag ${IMAGE_NAME} ${DOCKER_HUB_REPO}:latest"
+                sh "docker push ${DOCKER_HUB_REPO}:latest"
             }
         }
-
+    }
+}
         stage('Complete') {
             steps {
                 echo 'App built, deployed, and pushed to Docker Hub!'
