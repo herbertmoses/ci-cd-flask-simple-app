@@ -4,6 +4,8 @@ pipeline {
     environment {
         IMAGE_NAME = 'flask-app'
         DOCKER_HUB_REPO = 'mosy778/flask-app'
+        DOCKER_HUB_USERNAME = 'mosy778'
+        DOCKER_HUB_PASSWORD = 'Monday!123' // or password if not using token
     }
 
     stages {
@@ -41,15 +43,14 @@ pipeline {
 
         stage('Tag and Push to Docker Hub') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
-            script {
-                sh 'echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin'
-                sh "docker tag ${IMAGE_NAME} ${DOCKER_HUB_REPO}:latest"
-                sh "docker push ${DOCKER_HUB_REPO}:latest"
+                script {
+                    sh "echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin"
+                    sh "docker tag ${IMAGE_NAME} ${DOCKER_HUB_REPO}:latest"
+                    sh "docker push ${DOCKER_HUB_REPO}:latest"
+                }
             }
         }
-    }
-}
+
         stage('Complete') {
             steps {
                 echo 'App built, deployed, and pushed to Docker Hub!'
