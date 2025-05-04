@@ -26,7 +26,7 @@ pipeline {
         stage('Docker Compose Build') {
             steps {
                 dir('ci-cd-flask-simple-app') {
-                    sh 'docker-compose build'
+                    sh 'docker compose build'
                 }
             }
         }
@@ -34,7 +34,7 @@ pipeline {
         stage('Run Flask App with Compose') {
             steps {
                 dir('ci-cd-flask-simple-app') {
-                    sh 'docker-compose up -d'
+                    sh 'docker compose up -d'
                 }
             }
         }
