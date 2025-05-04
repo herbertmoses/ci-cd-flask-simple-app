@@ -41,7 +41,8 @@ pipeline {
 
         stage('Tag and Push to Docker Hub') {
             steps {
-                script {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
                     sh "docker tag ${IMAGE_NAME} ${DOCKER_HUB_REPO}:latest"
                     sh "docker push ${DOCKER_HUB_REPO}:latest"
                 }
@@ -55,4 +56,3 @@ pipeline {
         }
     }
 }
-
