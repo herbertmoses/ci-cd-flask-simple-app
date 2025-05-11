@@ -72,19 +72,15 @@ pipeline {
         stage('Deploy with Kubernetes') {
             steps {
                 script {
-                    // Ensure kubectl points to the Minikube cluster
-                    sh 'kubectl config use-context minikube'
-
-                    // Apply Kubernetes configurations (assuming YAML files are in the repository)
-                    sh '''
-                    kubectl apply -f ci-cd-flask-simple-app/k8s/namespace.yaml || true
-                    kubectl apply -f ci-cd-flask-simple-app/k8s/deployment.yaml
-                    kubectl apply -f ci-cd-flask-simple-app/k8s/service.yaml
-                    '''
-
-                    // Wait for Kubernetes resources to be created and accessible
-                    sh 'kubectl rollout status deployment flask-app-deployment'
-                    sh 'kubectl get svc flask-app-service'
+                // Run kubectl commands on the host machine
+                sh '''
+                kubectl config use-context minikube
+                kubectl apply -f ci-cd-flask-simple-app/k8s/namespace.yaml || true
+                kubectl apply -f ci-cd-flask-simple-app/k8s/deployment.yaml
+                kubectl apply -f ci-cd-flask-simple-app/k8s/service.yaml
+                kubectl rollout status deployment flask-app-deployment
+                kubectl get svc flask-app-service
+                '''
                 }
             }
         }
