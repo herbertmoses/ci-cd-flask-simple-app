@@ -6,6 +6,7 @@ pipeline {
         DOCKER_HUB_REPO = 'mosy778/flask-app'
         DOCKER_HUB_USERNAME = 'mosy778'
         DOCKER_HUB_PASSWORD = 'Monday!123' // Use Jenkins credentials ideally
+        KUBERNETES_CLUSTER_NAME = 'minikube'  // Set the name of your Kubernetes cluster
     }
 
     stages {
@@ -68,9 +69,29 @@ pipeline {
             }
         }
 
+        stage('Deploy with Kubernetes') {
+            steps {
+                script {
+                    // Ensure kubectl points to the Minikube cluster
+                    sh 'kubectl config use-context minikube'
+
+                    // Apply Kubernetes configurations (assuming YAML files are in the repository)
+                    sh '''
+                    kubectl apply -f ci-cd-flask-simple-app/k8s/namespace.yaml || true
+                    kubectl apply -f ci-cd-flask-simple-app/k8s/deployment.yaml
+                    kubectl apply -f ci-cd-flask-simple-app/k8s/service.yaml
+                    '''
+
+                    // Wait for Kubernetes resources to be created and accessible
+                    sh 'kubectl rollout status deployment flask-app-deployment'
+                    sh 'kubectl get svc flask-app-service'
+                }
+            }
+        }
+
         stage('Complete') {
             steps {
-                echo 'App built, pushed to Docker Hub, and deployed with Docker Swarm!'
+                echo 'App built, pushed to Docker Hub, deployed with Docker Swarm, and deployed with Kubernetes!'
             }
         }
     }
