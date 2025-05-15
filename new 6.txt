@@ -1,0 +1,290 @@
+Please consider the script UploadtoBlob.py which uploads a local file to Azure to Blob storage 
+and generates a downloadable link to access the file.
+
+uploadtoblob.py
+
+from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
+from datetime import datetime, timedelta,timezone
+
+import azure.identity
+
+# Upload the file to Blob Storage
+def upload_file_to_blob(container_name, file_path, blob_name):
+    try:
+        # Get the container client
+        container_client = blob_service_client.get_container_client(container_name)
+        
+        # Get the blob client
+        blob_client = container_client.get_blob_client(blob_name)
+        
+        # Upload the file
+        with open(file_path, "rb") as data:
+            blob_client.upload_blob(data)
+        
+        print(f"File {file_path} uploaded to blob {blob_name} in container {container_name}.")
+        
+        return blob_client.url
+    except Exception as e:
+        print(f"Error uploading file: {e}")
+        return None
+
+# Generate a one-time downloadable link
+def generate_download_link(container_name, blob_name):
+    try:
+        start_time=datetime.now(timezone.utc)
+        expiry_time=start_time+timedelta(hours=1)
+        user_delegation_key= blob_service_client.get_user_delegation_key(
+            key_start_time=start_time,
+            key_expiry_time=expiry_time
+            )
+        print("UDK",user_delegation_key.value)
+        sas_token = generate_blob_sas(
+            account_name=storage_account_name,
+            container_name=container_name,
+            blob_name=blob_name,
+            user_delegation_key=user_delegation_key,
+            permission=BlobSasPermissions(read=True),
+            expiry=expiry_time
+        )
+        print("Test")
+        download_link = f"https://{storage_account_name}.blob.core.windows.net/{container_name}/{blob_name}?{sas_token}"
+        
+        print(f"Download link (valid for minutes): {download_link}")
+        
+        return download_link
+    except Exception as e:
+        print(f"Error generating download link: {e}")
+        return None
+
+# Example usage
+container_name = "synthogen"
+file_path = "C:/AIML/Projects/synthogen-agent/requirements.txt"
+blob_name = "requirements.txt"
+storage_account_name= "sthcbsngen0101sngn"
+container_name="synthogen"
+blob_name="requirements.txt"
+blob_service_url="https://sthcbsngen0101sngn.blob.core.windows.net/"
+credential = azure.identity.DefaultAzureCredential()
+token_provider = azure.identity.get_bearer_token_provider(
+    credential, "https://cognitiveservices.azure.com/.default"
+)
+
+# Initialize the BlobServiceClient
+#blob_service_client = BlobServiceClient.from_connection_string("your_connection_string")
+storage_account_name= "sthcbsngen0101sngn"
+container_name="synthogen"
+blob_name="requirements.txt"
+blob_service_url="https://sthcbsngen0101sngn.blob.core.windows.net/"
+
+blob_service_client = BlobServiceClient(account_url=blob_service_url,credential=credential)
+container_client = blob_service_client.get_container_client(container_name)
+
+
+# Upload the file
+upload_file_to_blob(container_name, file_path, blob_name)
+
+# Generate the download link
+generate_download_link(container_name, blob_name)
+
+===
+Kindly merge this script with test_data_functions.py which has the existing flow for generating JSON output and save to local file 
+in csv format and also a placeholder method for uploading the stored file to Azure blob storage. Kindly include the above credentials
+to upload the local file to Azure blob storage each time when the generate_test_data method is called and then finally add the 
+downloadable link in the return statement along with test_data_output in generate_test_data method to return the JSON output and the 
+link to access the file in Azure blob.
+
+test_data_functions.py 
+
+import csv  # New import for CSV functionality
+# import json
+import os
+import time
+import uuid
+from src.connectors.mongo_db_connector_V0 import get_test_data_schema, store_test_data  # Import corrected functions
+from src.prompts.test_data_prompt import generate_test_data_prompt
+from src.llm.llm_config import load_completion_model
+from src.connectors.log_api_connector_mongodb import log_generation_completion
+
+def get_application_context(application_name: str):
+    """
+    Retrieve application context dynamically based on the application name.
+    """
+    # Map application names to their respective schema IDs or project names
+    application_map = {
+        "Market Prominence": "Market Prominence",
+        # Add other applications here as needed
+    }
+    return application_map.get(application_name, None)
+
+import json
+import pandas as pd
+import os
+from datetime import datetime
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
+
+AZURE_CONNECTION_STRING = "XXXVVV"
+AZURE_CONTAINER_NAME = "YYYTTSS"
+
+def upload_to_azure_blob(local_file_path, blob_name):
+    "uploads a local file to azure blob storage"
+    try:
+        #Create Blobserviceclient
+        blob_service_client = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
+
+        #Get the container client
+        container_client = blob_service_client.get_container_client(AZURE_CONTAINER_NAME)
+        container_client.create_container() #creates the container if it doesn't exists
+
+        #upload the file
+        blob_client = container_client.get_blob_client(blob_name)
+        with open(local_file_path, "rb") as data:
+            blob_client.upload_blob(data, overwrite = True)
+        
+        print(f"File uploaded to Azure Blod Storage: {blob_name}")
+        return True
+    except Exception as e:
+        print("Azure Blod upload Error: {str(e)}")
+        return False
+
+def save_test_data_to_csv(test_data_output, folder_path="test_data_outputs"):
+    """Parses structured test data output from LLM (JSON format), converts it to a DataFrame, then saves as a uniquely named CSV file."""
+    try:
+        # Ensure the output directory exists
+        os.makedirs(folder_path, exist_ok=True)
+
+        # Clean the test_data_output string
+        test_data_output = test_data_output.strip().strip("```")  # Remove extra formatting
+
+        # Parse JSON string into Python list
+        test_data_list = json.loads(test_data_output)
+
+        # Convert JSON list to Pandas DataFrame
+        df = pd.DataFrame(test_data_list)
+
+        # Generate a unique filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # e.g., 20250319_143025
+        filename = f"test_data_{timestamp}.csv"
+        file_path = os.path.join(folder_path, filename)
+
+        # Save DataFrame to CSV without overwriting previous files
+        df.to_csv(file_path, index=False, encoding="utf-8")
+
+        return df  # Returning DataFrame for further use if needed
+		
+		print(f"Test data successfully saved to {file_path}")
+
+       #upload file to Azure Blob Storage
+        upload_to_azure_blob(file_path, filename)
+
+    except json.JSONDecodeError as e:
+        print(f"Error: Failed to parse JSON output. Ensure the JSON structure is correct. {str(e)}")
+        return None
+    except Exception as e:
+        print(f"Error saving test data: {str(e)}")
+        return None
+
+def validate_csv_format(testdata_output):
+    """
+    Validates if the generated test data is in the structured CSV format.
+    """
+    # Check if the output contains a header row (example: "S.No, Test Data Name")
+    # if "S.No" in testdata_output and "Test Data Name" in testdata_output:
+    if "\n" in testdata_output:
+        # Check if the rows are comma-separated, indicating a CSV structure
+        # rows = testdata_output.strip().split("\n")
+        # for row in rows:
+        #     if len(row.split(",")) < 2:  # If a row doesn't have at least 2 columns, it's invalid
+        #         return False
+        return True
+    return False
+
+def generate_test_data(user_scenario, user_name, application):
+    print("Inside generate test data. User Input:", user_scenario)
+
+    try:
+        # Get the application context dynamically
+        project_name = get_application_context(application)
+        if project_name:
+            # Fetch the application details from the MongoDB collection
+            project_data = get_test_data_schema(project_name)
+            print(f"project_data: {project_data}")
+            
+            if project_data and 'test_data_schema_details' in project_data:
+                test_data_details = project_data['test_data_schema_details']
+                print(f"test_data_details: {test_data_details}")
+                # Generate the test data prompt with application-specific details
+                testdata_prompt = generate_test_data_prompt(user_scenario, test_data_details)
+            else:
+                test_data_details = "No additional test data schema details found."
+                print(f"No test data schema details found for '{application}'.")
+                # Generate the test data prompt without application details
+                testdata_prompt = generate_test_data_prompt(user_scenario, test_data_details)
+        else:
+            # If application is not found in the context map, generate based on the prompt content alone
+            print(f"Application chosen: {application}. Generating test data based on the prompt content.")
+            testdata_prompt = generate_test_data_prompt(user_scenario, "")
+
+        # Setting up the service principal for LLM model interaction
+        client = load_completion_model()
+
+        # Record start time for response duration
+        start_time = time.time()
+
+        # Make a request to the OpenAI model to generate the test data
+        response = client.chat.completions.create(
+            model=os.getenv('DEPLOYMENT_NAME'),
+            messages=[{"role": "system", "content": "You are a helpful AI assistant generating test data for software testing."},
+                      {"role": "user", "content": testdata_prompt}],
+            max_tokens= 4000
+        )
+
+        # Output the AI response (generated test data)
+        print("Generate Test Data Output from AI", response)
+        testdata_output = response.choices[0].message.content
+        print("testdata output:", testdata_output)
+
+        # Record end time and calculate response time
+        end_time = time.time()
+        response_time = f"{round(end_time - start_time, 2):.2f} sec"
+
+        # Get token usage from the OpenAI response
+        completion_tokens = response.usage.completion_tokens
+        prompt_tokens = response.usage.prompt_tokens
+        total_tokens = response.usage.total_tokens
+        model_name = response.model
+
+        # # Validate if the output is in structured CSV format
+        if validate_csv_format(testdata_output):
+            # Save the test data to a CSV file
+            save_test_data_to_csv(testdata_output)
+
+            # Log the test data generation details
+            log_generation_completion(
+                message_id=str(uuid.uuid4()),
+                user_id=user_name,
+                user_name=user_name,
+                response_time=response_time,
+                response_code="200",
+                input_prompt=user_scenario,
+                synthogen_response=testdata_output,
+                completion_tokens=completion_tokens,
+                prompt_tokens=prompt_tokens,
+                total_tokens=total_tokens,
+                model_name=model_name,
+                category="testdata_generate"
+            )
+
+            print(f"Success: Test data saved to test_data.csv")
+        else:
+            print("Test Data not in structured format")
+            # return "Error: Test data is not in the expected structured format."
+        return testdata_output
+
+    except Exception as e:
+        return f"Error: An unexpected error has occurred. Please try again later. Error: {str(e)}"
+====
+
+Connector_response:
+
+{'user_story_id': 1710696, 'user_story_name': 'Internet Speed Test Check for CVS Application', 'user_story_description': "<p>As a user of the CVS application, I want to perform an internet speed test to check my network connection quality, so that I can ensure a stable and optimal experience while using the application. 
+This is important because it helps identify connectivity issues that can affect the application's performance, particularly when using network-dependent features such as downloading/updating medication information, accessing pharmacy details, or online consultations.</p>", 'user_story_url': 'https://qadeveloper.aetna.com/ccm/resource/itemName/com.ibm.team.workitem.WorkItem/1710696'}
